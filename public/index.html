@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>캐치마인드 (Catchmind)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <style>
+        :root {
+            --bg: #FFF7EC;
+            --paper: #FFFFFF;
+            --ink: #2B2340;
+            --muted: #7D7594;
+            --line-soft: #D9D3E5;
+
+            --coral: #FF6B6B;
+            --coral-soft: #FFE1E1;
+            --sun: #FFC93C;
+            --sun-soft: #FFF1C7;
+            --mint: #2EC4A6;
+            --mint-soft: #D5F5EC;
+            --sky: #4D96FF;
+            --sky-soft: #DDEBFF;
+            --grape: #9B7BFF;
+            --grape-soft: #ECE5FF;
+
+            --border: 2.5px solid var(--ink);
+            --radius: 20px;
+            --pop: cubic-bezier(.34, 1.56, .64, 1);
+
+            --font-display: 'Jua', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            --font-body: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            color-scheme: light;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-body);
+            color: var(--ink);
+            background-color: var(--bg);
+            background-image: radial-gradient(rgba(43, 35, 64, .09) 1.3px, transparent 1.4px);
+            background-size: 22px 22px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            overflow-x: hidden;
+        }
+
+        button, input { font: inherit; color: inherit; }
+
+        .card {
+            background: var(--paper);
+            border: var(--border);
+            border-radius: var(--radius);
+            box-shadow: 5px 5px 0 var(--ink);
+        }
+
+        /* ---------- 버튼 ---------- */
+        .btn {
+            font-family: var(--font-display);
+            font-size: 17px;
+            padding: 10px 18px;
+            border: var(--border);
+            border-radius: 14px;
+            background: var(--paper);
+            color: var(--ink);
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 4px 0 var(--ink);
+            transition: transform .18s var(--pop), box-shadow .18s var(--pop), background-color .15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--ink); }
+        .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); transition-duration: .06s; }
+        .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: 0 4px 0 var(--ink); }
+        .btn-primary { background: var(--coral); }
+        .btn-mint { background: var(--mint); }
+        .btn-sky { background: var(--sky); }
+        .btn-small { font-size: 14px; padding: 6px 12px; border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+        .btn-small:hover { box-shadow: 0 5px 0 var(--ink); }
+        .btn-block { width: 100%; }
+
+        .btn:focus-visible, .color-btn:focus-visible, .room-code:focus-visible {
+            outline: 3px solid var(--sky);
+            outline-offset: 3px;
+        }
+
+        /* ---------- 입력창 ---------- */
+        .input {
+            width: 100%;
+            padding: 12px 14px;
+            border: var(--border);
+            border-radius: 14px;
+            background: #fff;
+            font-size: 15px;
+            transition: box-shadow .18s var(--pop), transform .18s var(--pop);
+        }
+        .input::placeholder { color: #B3ADC2; }
+        .input:focus { outline: none; transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--sun); }
+        .input:disabled { background: #F6F4FA; }
+
+        /* ---------- 배경 낙서 ---------- */
+        .doodles { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .doodle { position: absolute; animation: float 6s ease-in-out infinite; }
+        .doodle.d1 { top: 9%; left: 7%; --r: -12deg; }
+        .doodle.d2 { bottom: 12%; left: 6%; --r: 6deg; animation-delay: -2s; }
+        .doodle.d3 { top: 12%; right: 8%; animation-delay: -1s; }
+        .doodle.d4 { bottom: 9%; right: 7%; --r: 10deg; animation-delay: -3s; }
+        .doodle.d5 { top: 48%; left: 3%; --r: 8deg; animation-delay: -4s; }
+        .doodle.d6 { top: 52%; right: 3%; --r: -6deg; animation-delay: -1.5s; }
+
+        /* ---------- 로고 ---------- */
+        .logo {
+            font-family: var(--font-display);
+            font-weight: 400;
+            font-size: 52px;
+            line-height: 1.1;
+            text-align: center;
+            letter-spacing: 1px;
+            cursor: default;
+        }
+        .logo span {
+            display: inline-block;
+            text-shadow: 3px 3px 0 var(--ink);
+            transform: rotate(var(--r));
+            animation: letter-drop .7s var(--pop) both;
+            animation-delay: var(--d);
+        }
+        /* 처음 떨어지는 애니메이션이 끝난 뒤(landed)에만 hover 효과 적용 */
+        .logo.landed span { animation: none; }
+        .logo.landed:hover span { animation: hop .55s var(--pop); animation-delay: calc(var(--d) * .6); }
+        .logo span:nth-child(1) { color: var(--coral); --r: -6deg; --d: .05s; }
+        .logo span:nth-child(2) { color: var(--sun);   --r: 4deg;  --d: .12s; }
+        .logo span:nth-child(3) { color: var(--mint);  --r: -3deg; --d: .19s; }
+        .logo span:nth-child(4) { color: var(--sky);   --r: 5deg;  --d: .26s; }
+        .logo span:nth-child(5) { color: var(--grape); --r: -4deg; --d: .33s; }
+        .logo-sm { font-size: 26px; text-align: left; white-space: nowrap; }
+        .logo-sm span { text-shadow: 2px 2px 0 var(--ink); }
+
+        /* ---------- 로비 ---------- */
+        #lobby-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            padding: 32px 28px 28px;
+            animation: pop-in .6s var(--pop) both;
+        }
+        .tagline { text-align: center; color: var(--muted); font-size: 14px; margin: 8px 0 26px; }
+        .field { margin-bottom: 18px; }
+        .field-label { display: block; font-family: var(--font-display); font-size: 16px; margin-bottom: 8px; }
+
+        .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .chip { position: relative; cursor: pointer; }
+        .chip input { position: absolute; opacity: 0; pointer-events: none; }
+        .chip span {
+            display: block;
+            text-align: center;
+            padding: 9px 6px;
+            border: var(--border);
+            border-radius: 12px;
+            background: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            transition: transform .18s var(--pop), box-shadow .18s var(--pop), background-color .15s;
+        }
+        .chip:hover span { transform: translateY(-2px); }
+        .chip input:checked + span { background: var(--chip-c); transform: translateY(-2px); box-shadow: 0 3px 0 var(--ink); }
+        .chip input:focus-visible + span { outline: 3px solid var(--sky); outline-offset: 2px; }
+        .chip.mild    { --chip-c: #9BE7C4; }
+        .chip.normal  { --chip-c: var(--sun); }
+        .chip.spicy   { --chip-c: #FF9F5A; }
+        .chip.extreme { --chip-c: var(--coral); }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 22px 0 14px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .divider::before, .divider::after { content: ''; flex: 1; border-top: 2px dashed var(--line-soft); }
+
+        .join-row { display: flex; gap: 10px; }
+        .join-row .input {
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            font-family: var(--font-display);
+            font-size: 20px;
+            letter-spacing: 4px;
+        }
+        .join-row .input::placeholder { font-family: var(--font-body); font-size: 15px; letter-spacing: 0; }
+
+        /* ---------- 게임 화면 ---------- */
+        #game-container {
+            display: none;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1060px;
+            animation: pop-in .5s var(--pop) both;
+        }
+
+        .game-header {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+        }
+        .room-code {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border: 2px dashed var(--ink);
+            border-radius: 12px;
+            background: var(--sun-soft);
+            font-family: var(--font-display);
+            font-size: 14px;
+            color: var(--muted);
+            cursor: pointer;
+            transition: transform .18s var(--pop);
+        }
+        .room-code:hover { transform: rotate(-2deg) scale(1.04); }
+        .room-code strong { font-weight: 400; font-size: 22px; letter-spacing: 3px; color: var(--ink); }
+        .copy-hint {
+            font-family: var(--font-body);
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #fff;
+            background: var(--ink);
+            border-radius: 8px;
+            padding: 2px 7px;
+        }
+        .header-actions { margin-left: auto; display: flex; gap: 10px; }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 210px minmax(0, 1fr) 270px;
+            gap: 16px;
+            height: 620px;
+        }
+
+        .panel { display: flex; flex-direction: column; padding: 16px; min-height: 0; }
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-family: var(--font-display);
+            font-weight: 400;
+            font-size: 18px;
+        }
+        .count-badge {
+            display: inline-grid;
+            place-items: center;
+            min-width: 26px;
+            height: 24px;
+            padding: 0 7px;
+            border: 2px solid var(--ink);
+            border-radius: 999px;
+            background: var(--grape-soft);
+            font-size: 13px;
+        }
+
+        /* 참가자 목록 */
+        .player-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            min-height: 0;
+            padding: 2px 4px 6px 2px;
+        }
+        .player-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border: 2px solid var(--ink);
+            border-radius: 14px;
+            background: #fff;
+            animation: pop-in .4s var(--pop) both;
+            transition: background-color .2s, box-shadow .2s;
+        }
+        .player-item.is-me { background: var(--sky-soft); }
+        .player-item.is-drawer { background: var(--sun-soft); box-shadow: 0 3px 0 var(--ink); }
+        .player-item.waiting { opacity: .6; }
+        .avatar {
+            position: relative;
+            flex: none;
+            display: grid;
+            place-items: center;
+            width: 34px;
+            height: 34px;
+            border: 2px solid var(--ink);
+            border-radius: 50%;
+            background: var(--c);
+            font-family: var(--font-display);
+            font-size: 17px;
+        }
+        .player-item.is-host .avatar::before {
+            content: '👑';
+            position: absolute;
+            top: -13px;
+            left: -7px;
+            font-size: 15px;
+            transform: rotate(-20deg);
+        }
+        .player-item.is-drawer .avatar::after {
+            content: '✏️';
+            position: absolute;
+            right: -9px;
+            bottom: -6px;
+            font-size: 14px;
+            animation: scribble 1s ease-in-out infinite;
+        }
+        .pname {
+            flex: 1;
+            min-width: 0;
+            font-weight: 700;
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tag {
+            display: inline-block;
+            margin-left: 5px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: var(--ink);
+            color: #fff;
+            font-size: 10.5px;
+            vertical-align: 2px;
+        }
+        .tag-muted { background: var(--line-soft); color: var(--ink); }
+        .pscore { flex: none; font-family: var(--font-display); font-size: 16px; }
+        .pscore.bump { animation: bump .6s var(--pop); }
+
+        /* 캔버스 영역 */
+        .canvas-area { align-items: center; padding: 14px 18px 16px; }
+        .game-status-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .round-pill {
+            padding: 6px 12px;
+            border: 2px solid var(--ink);
+            border-radius: 999px;
+            background: var(--grape-soft);
+            font-family: var(--font-display);
+            font-size: 15px;
+            white-space: nowrap;
+        }
+        .word-box {
+            min-width: 0;
+            padding: 6px 16px;
+            border: var(--border);
+            border-radius: 999px;
+            background: var(--coral-soft);
+            font-family: var(--font-display);
+            font-size: 20px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            animation: pop-in .45s var(--pop) both;
+        }
+        .word-box.watching { background: var(--sky-soft); font-size: 15px; }
+        .timer-box {
+            min-width: 84px;
+            padding: 6px 12px;
+            border: 2px solid var(--ink);
+            border-radius: 999px;
+            background: var(--mint-soft);
+            text-align: center;
+            font-family: var(--font-display);
+            font-size: 17px;
+            white-space: nowrap;
+        }
+        .timer-box.urgent { background: var(--coral); animation: tick 1s ease-in-out infinite; }
+
+        .timer-track {
+            width: 100%;
+            height: 10px;
+            margin: 12px 0;
+            border: 2px solid var(--ink);
+            border-radius: 999px;
+            background: #F3EFF8;
+            overflow: hidden;
+        }
+        .timer-fill {
+            width: 100%;
+            height: 100%;
+            background: var(--mint);
+            transition: width 1s linear, background-color .3s;
+        }
+        .timer-fill.warn { background: var(--sun); }
+        .timer-fill.urgent { background: var(--coral); }
+
+        /* 캔버스 테두리는 래퍼에 줘서 좌표 계산이 어긋나지 않게 함 */
+        .canvas-wrap {
+            width: 100%;
+            max-width: 480px;
+            border: var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 4px 4px 0 var(--ink);
+            line-height: 0;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        .canvas-area.readonly canvas { cursor: default; }
+
+        .canvas-controls {
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            transition: opacity .2s;
+        }
+        .canvas-area.readonly .canvas-controls { opacity: .4; pointer-events: none; filter: grayscale(.3); }
+
+        .color-palette { display: flex; align-items: center; gap: 7px; }
+        .color-btn, .picker {
+            position: relative;
+            flex: none;
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border: var(--border);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform .18s var(--pop), box-shadow .18s;
+        }
+        .color-btn:hover, .picker:hover { transform: translateY(-3px); }
+        .color-btn.active, .picker.active {
+            transform: translateY(-3px) scale(1.1);
+            box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--ink);
+        }
+        .picker {
+            overflow: hidden;
+            background: conic-gradient(#FF6B6B, #FFC93C, #7ED957, #2EC4A6, #4D96FF, #9B7BFF, #FF8FB1, #FF6B6B);
+        }
+        .picker input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+        .brush-size-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-display);
+            font-size: 14px;
+        }
+        .brush-size-group input[type="range"] { width: 80px; accent-color: var(--coral); cursor: pointer; }
+        #brush-size-val { min-width: 34px; color: var(--muted); }
+
+        /* 채팅 */
+        .chat-messages {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 2px 4px 8px 2px;
+            font-size: 13.5px;
+        }
+        .chat-msg {
+            align-self: flex-start;
+            max-width: 88%;
+            padding: 6px 10px;
+            border: 2px solid var(--ink);
+            border-radius: 14px 14px 14px 4px;
+            background: #F3EFF8;
+            word-break: break-all;
+            animation: msg-in .35s var(--pop) both;
+        }
+        .chat-msg.mine { align-self: flex-end; background: var(--sky-soft); border-radius: 14px 14px 4px 14px; }
+        .chat-msg.mine .chat-name { display: none; }
+        .chat-name { display: block; margin-bottom: 1px; font-size: 11.5px; font-weight: 800; color: var(--muted); }
+        .chat-msg.system {
+            align-self: center;
+            max-width: 100%;
+            text-align: center;
+            border-style: dashed;
+            border-radius: 12px;
+            background: var(--sun-soft);
+            font-weight: 700;
+            font-size: 12.5px;
+        }
+        .chat-input-group {
+            display: flex;
+            gap: 8px;
+            padding-top: 12px;
+            border-top: 2px dashed var(--line-soft);
+        }
+        .chat-input-group .input { flex: 1; min-width: 0; padding: 10px 12px; font-size: 14px; }
+
+        /* ---------- 결과 모달 ---------- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            padding: 16px;
+            justify-content: center;
+            align-items: center;
+            background: rgba(43, 35, 64, .55);
+            backdrop-filter: blur(2px);
+        }
+        .modal-card {
+            width: 100%;
+            max-width: 400px;
+            padding: 28px;
+            text-align: center;
+            animation: modal-pop .55s var(--pop) both;
+        }
+        .modal-card h2 { font-family: var(--font-display); font-weight: 400; font-size: 30px; }
+        .modal-sub { margin-top: 4px; color: var(--muted); font-size: 14px; }
+        .winner-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 20px 0; }
+        .winner-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border: 2px solid var(--ink);
+            border-radius: 14px;
+            background: #fff;
+            font-weight: 800;
+            animation: pop-in .45s var(--pop) both;
+        }
+        .winner-item:nth-child(1) { animation-delay: .15s; }
+        .winner-item:nth-child(2) { animation-delay: .25s; }
+        .winner-item:nth-child(3) { animation-delay: .35s; }
+        .winner-item:nth-child(n+4) { animation-delay: .45s; }
+        .winner-item .score { font-family: var(--font-display); font-weight: 400; font-size: 18px; }
+        .winner-item.rank-1 { background: var(--sun); box-shadow: 0 4px 0 var(--ink); font-size: 17px; }
+        .winner-item.rank-2 { background: #E9E6F0; }
+        .winner-item.rank-3 { background: #FFD3B5; }
+
+        /* 정답 축하 효과 */
+        .confetti {
+            position: fixed;
+            z-index: 2000;
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--ink);
+            pointer-events: none;
+            animation: burst .9s cubic-bezier(.2, .8, .3, 1) forwards;
+        }
+
+        /* ---------- 애니메이션 ---------- */
+        @keyframes pop-in {
+            0% { opacity: 0; transform: scale(.85) translateY(10px); }
+            100% { opacity: 1; transform: none; }
+        }
+        @keyframes modal-pop {
+            0% { opacity: 0; transform: scale(.6) rotate(-4deg); }
+            100% { opacity: 1; transform: none; }
+        }
+        @keyframes letter-drop {
+            0% { opacity: 0; transform: translateY(-30px) rotate(0); }
+            100% { opacity: 1; transform: translateY(0) rotate(var(--r)); }
+        }
+        @keyframes hop {
+            0%, 100% { transform: translateY(0) rotate(var(--r)); }
+            40% { transform: translateY(-10px) rotate(calc(var(--r) * -1)); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+            50% { transform: translateY(-14px) rotate(calc(var(--r, 0deg) + 8deg)); }
+        }
+        @keyframes bump {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.6) rotate(-8deg); color: var(--coral); }
+            100% { transform: scale(1); }
+        }
+        @keyframes tick {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.12) rotate(-3deg); }
+        }
+        @keyframes scribble {
+            0%, 100% { transform: rotate(0); }
+            50% { transform: rotate(-20deg) translateY(-2px); }
+        }
+        @keyframes msg-in {
+            from { opacity: 0; transform: translateY(8px) scale(.9); }
+            to { opacity: 1; transform: none; }
+        }
+        @keyframes burst {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(.4); }
+            100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)) scale(1); }
+        }
+
+        /* ---------- 모바일 ---------- */
+        @media (max-width: 860px) {
+            body { padding: 12px; justify-content: flex-start; }
+            .doodles { display: none; }
+            #lobby-container { margin-top: 24px; padding: 26px 20px 22px; }
+            .logo { font-size: 44px; }
+            .logo-sm { font-size: 22px; }
+            .game-header { padding: 10px 12px; gap: 10px; }
+            .main-layout { grid-template-columns: 1fr; height: auto; }
+            .player-list { flex-direction: row; flex-wrap: wrap; max-height: 110px; }
+            .player-item { padding: 5px 8px; gap: 7px; }
+            .avatar { width: 26px; height: 26px; font-size: 14px; }
+            .canvas-area { padding: 12px; }
+            .game-status-bar { flex-wrap: wrap; justify-content: center; }
+            .canvas-controls { gap: 10px; }
+            .chat-sidebar { height: 300px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 배경 낙서 장식 -->
+    <div class="doodles" aria-hidden="true">
+        <svg class="doodle d1" width="56" height="56" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" fill="#FFC93C" stroke="#2B2340" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        <svg class="doodle d2" width="96" height="32" viewBox="0 0 90 30"><path d="M4 15 Q 14 3 24 15 T 44 15 T 64 15 T 84 15" fill="none" stroke="#FF6B6B" stroke-width="5" stroke-linecap="round"/></svg>
+        <svg class="doodle d3" width="58" height="58" viewBox="0 0 54 54"><circle cx="27" cy="27" r="19" fill="none" stroke="#2B2340" stroke-width="10"/><circle cx="27" cy="27" r="19" fill="none" stroke="#4D96FF" stroke-width="5"/></svg>
+        <svg class="doodle d4" width="54" height="54" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.4 3 5 6.5 5c2.1 0 3.5 1.2 5.5 3.3C14 6.2 15.4 5 17.5 5 21 5 23 8.4 21.5 11.8 19.5 16.4 12 21 12 21z" fill="#FF8FB1" stroke="#2B2340" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        <svg class="doodle d5" width="46" height="46" viewBox="0 0 48 48"><path d="M24 6 L42 40 H6 Z" fill="#2EC4A6" stroke="#2B2340" stroke-width="3" stroke-linejoin="round"/></svg>
+        <svg class="doodle d6" width="60" height="22" viewBox="0 0 60 22"><circle cx="10" cy="11" r="6" fill="#9B7BFF" stroke="#2B2340" stroke-width="2"/><circle cx="30" cy="11" r="6" fill="#9B7BFF" stroke="#2B2340" stroke-width="2"/><circle cx="50" cy="11" r="6" fill="#9B7BFF" stroke="#2B2340" stroke-width="2"/></svg>
+    </div>
+
+    <!-- 로비 / 방 입장 화면 -->
+    <main id="lobby-container" class="card">
+        <h1 class="logo"><span>캐</span><span>치</span><span>마</span><span>인</span><span>드</span></h1>
+        <p class="tagline">그리고, 맞히고, 깔깔 웃자! ✏️</p>
+
+        <div class="field">
+            <label class="field-label" for="nickname">닉네임</label>
+            <input type="text" id="nickname" class="input" placeholder="뭐라고 불러줄까요?" maxlength="12" autocomplete="off">
+        </div>
+
+        <div class="field">
+            <span class="field-label" id="difficulty-label">매운맛 고르기</span>
+            <div class="chips" role="radiogroup" aria-labelledby="difficulty-label">
+                <label class="chip mild"><input type="radio" name="difficulty" value="mild"><span>🌶️ 순한맛</span></label>
+                <label class="chip normal"><input type="radio" name="difficulty" value="normal" checked><span>🌶️🌶️ 보통맛</span></label>
+                <label class="chip spicy"><input type="radio" name="difficulty" value="spicy"><span>🌶️🌶️🌶️ 불닭맛</span></label>
+                <label class="chip extreme"><input type="radio" name="difficulty" value="extreme"><span>🔥 핵불닭맛</span></label>
+            </div>
+        </div>
+
+        <button id="btn-create" class="btn btn-primary btn-block">방 만들기</button>
+
+        <div class="divider">또는 친구 방에 참가하기</div>
+
+        <div class="join-row">
+            <input type="text" id="room-id" class="input" placeholder="방 번호 4자리" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="방 번호">
+            <button id="btn-join" class="btn btn-sky">참가!</button>
+        </div>
+    </main>
+
+    <!-- 게임 화면 -->
+    <div id="game-container">
+        <header class="game-header card">
+            <div class="logo logo-sm"><span>캐</span><span>치</span><span>마</span><span>인</span><span>드</span></div>
+            <button class="room-code" id="room-code-btn" title="클릭해서 방 번호 복사">
+                방 번호 <strong id="display-room-id">-</strong> <span class="copy-hint" id="copy-hint">복사</span>
+            </button>
+            <div class="header-actions">
+                <button id="btn-start" class="btn btn-mint">▶ 게임 시작</button>
+                <button id="btn-leave" class="btn">나가기</button>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            <!-- 플레이어 목록 -->
+            <aside class="player-sidebar panel card">
+                <h4 class="panel-title">참가자 <span class="count-badge" id="player-count">0</span></h4>
+                <ul class="player-list" id="player-list"></ul>
+            </aside>
+
+            <!-- 캔버스 영역 -->
+            <section class="canvas-area panel card readonly" id="canvas-area">
+                <div class="game-status-bar">
+                    <div id="round-info" class="round-pill">라운드: 대기 중</div>
+                    <div id="word-display" class="word-box" style="display: none;">제시어: -</div>
+                    <div id="timer-display" class="timer-box">⏱ 60초</div>
+                </div>
+                <div class="timer-track"><div class="timer-fill" id="timer-fill"></div></div>
+
+                <div class="canvas-wrap">
+                    <canvas id="paint-canvas" width="480" height="390"></canvas>
+                </div>
+
+                <div class="canvas-controls">
+                    <div class="color-palette">
+                        <button class="color-btn active" style="background-color: #2B2340;" data-color="#2B2340" aria-label="검정"></button>
+                        <button class="color-btn" style="background-color: #FF6B6B;" data-color="#FF6B6B" aria-label="빨강"></button>
+                        <button class="color-btn" style="background-color: #FF9F5A;" data-color="#FF9F5A" aria-label="주황"></button>
+                        <button class="color-btn" style="background-color: #FFC93C;" data-color="#FFC93C" aria-label="노랑"></button>
+                        <button class="color-btn" style="background-color: #2EC4A6;" data-color="#2EC4A6" aria-label="초록"></button>
+                        <button class="color-btn" style="background-color: #4D96FF;" data-color="#4D96FF" aria-label="파랑"></button>
+                        <button class="color-btn" style="background-color: #9B7BFF;" data-color="#9B7BFF" aria-label="보라"></button>
+                        <button class="color-btn" style="background-color: #FFFFFF;" data-color="#FFFFFF" aria-label="지우개(흰색)"></button>
+                        <label class="picker" id="color-picker-wrap" title="다른 색 고르기">
+                            <input type="color" id="color-picker" value="#2B2340" aria-label="색상 직접 선택">
+                        </label>
+                    </div>
+
+                    <div class="brush-size-group">
+                        <label for="brush-size">굵기</label>
+                        <input type="range" id="brush-size" min="1" max="30" value="4">
+                        <span id="brush-size-val">4px</span>
+                    </div>
+
+                    <button id="btn-clear" class="btn btn-primary btn-small">🗑 전체 지우기</button>
+                </div>
+            </section>
+
+            <!-- 채팅 영역 -->
+            <aside class="chat-sidebar panel card">
+                <h4 class="panel-title">채팅 💬</h4>
+                <div class="chat-messages" id="chat-messages"></div>
+                <div class="chat-input-group">
+                    <input type="text" id="chat-input" class="input" placeholder="정답 또는 채팅 입력..." maxlength="100" autocomplete="off" disabled>
+                    <button id="btn-send" class="btn btn-sky btn-small" disabled>전송</button>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- 결과 모달 -->
+    <div id="winner-modal" class="modal-overlay">
+        <div class="modal-card card">
+            <h2>🏆 최종 결과 🏆</h2>
+            <p class="modal-sub">모두 수고했어요!</p>
+            <ul id="winner-list" class="winner-list"></ul>
+            <button id="btn-close-modal" class="btn btn-primary btn-block">확인</button>
+        </div>
+    </div>
+
+    <!-- 웹서버(Apache 등)에서 페이지만 열어도 동작하도록 CDN에서 소켓 클라이언트를 불러옴 -->
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js"></script>
+    <script>
+        // 게임 서버(node server.js) 주소.
+        // 비워두면 이 페이지를 연 주소로 접속 (Node 서버가 페이지까지 직접 제공하는 경우).
+        // 페이지는 학원 웹서버에 올리고 Node 서버는 따로 돌린다면 예: 'http://서버IP:3000'
+        const SERVER_URL = '';
+
+        // 'http://서버/catchmind/' 처럼 하위 폴더에 올려도 소켓 경로가 맞도록 현재 폴더 기준으로 계산
+        const BASE_PATH = location.pathname.replace(/[^/]*$/, '');
+        const socket = SERVER_URL
+            ? io(SERVER_URL)
+            : io({ path: BASE_PATH + 'socket.io' });
+
+        socket.on('connect_error', (err) => {
+            console.error('게임 서버 연결 실패:', err.message);
+        });
+
+        // DOM 요소
+        const lobbyContainer = document.getElementById('lobby-container');
+        const gameContainer = document.getElementById('game-container');
+        const nicknameInput = document.getElementById('nickname');
+        const roomIdInput = document.getElementById('room-id');
+        const btnCreate = document.getElementById('btn-create');
+        const btnJoin = document.getElementById('btn-join');
+        const btnStart = document.getElementById('btn-start');
+        const btnLeave = document.getElementById('btn-leave');
+        const roomCodeBtn = document.getElementById('room-code-btn');
+        const copyHint = document.getElementById('copy-hint');
+        const displayRoomId = document.getElementById('display-room-id');
+        const playerList = document.getElementById('player-list');
+        const playerCount = document.getElementById('player-count');
+        const wordDisplay = document.getElementById('word-display');
+        const timerDisplay = document.getElementById('timer-display');
+        const timerFill = document.getElementById('timer-fill');
+        const roundInfo = document.getElementById('round-info');
+
+        const canvasArea = document.getElementById('canvas-area');
+        const canvas = document.getElementById('paint-canvas');
+        const ctx = canvas.getContext('2d');
+        const btnClear = document.getElementById('btn-clear');
+        const colorBtns = document.querySelectorAll('.color-btn');
+        const colorPicker = document.getElementById('color-picker');
+        const colorPickerWrap = document.getElementById('color-picker-wrap');
+        const brushSizeInput = document.getElementById('brush-size');
+        const brushSizeVal = document.getElementById('brush-size-val');
+
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const btnSend = document.getElementById('btn-send');
+
+        const winnerModal = document.getElementById('winner-modal');
+        const winnerList = document.getElementById('winner-list');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+
+        const ROUND_TIME = 60;
+        const URGENT_TIME = 10;
+        const MIN_POINT_DISTANCE = 2; // 이보다 가까운 좌표는 전송하지 않음 (이벤트 수 절감)
+        const AVATAR_COLORS = ['#FF6B6B', '#FFC93C', '#2EC4A6', '#4D96FF', '#9B7BFF', '#FF8FB1', '#FF9F5A', '#7ED957'];
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        let isDrawing = false;
+        let isMyTurn = false; // 현재 내가 그림을 그릴 수 있는 출제자인지 여부
+        let myNickname = '';
+        let currentColor = '#2B2340';
+        let currentWidth = 4;
+        let lastPoint = null; // 현재 그려지고 있는 획의 마지막 좌표
+        let players = [];
+        let currentDrawerId = null;
+        let gameActive = false;
+        const prevScores = new Map(); // 점수 오를 때 통통 튀는 효과용
+
+        setTimeout(() => document.querySelectorAll('.logo').forEach(l => l.classList.add('landed')), 1100);
+
+        // --- 로비 액션 ---
+        btnCreate.addEventListener('click', () => {
+            myNickname = nicknameInput.value.trim();
+            const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
+            if (!myNickname) return alert('닉네임을 입력해 주세요.');
+            socket.emit('create-room', { nickname: myNickname, difficulty });
+        });
+
+        btnJoin.addEventListener('click', () => {
+            myNickname = nicknameInput.value.trim();
+            const roomId = roomIdInput.value.trim();
+            if (!myNickname) return alert('닉네임을 입력해 주세요.');
+            if (!roomId) return alert('방 번호를 입력해 주세요.');
+            socket.emit('join-room', { roomId, nickname: myNickname });
+        });
+
+        roomIdInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.isComposing) btnJoin.click();
+        });
+
+        btnLeave.addEventListener('click', () => {
+            socket.emit('leave-room');
+            gameContainer.style.display = 'none';
+            lobbyContainer.style.display = 'block';
+            chatInput.disabled = true;
+            btnSend.disabled = true;
+            players = [];
+            resetGameUI();
+        });
+
+        btnStart.addEventListener('click', () => {
+            socket.emit('start-game');
+        });
+
+        btnCloseModal.addEventListener('click', () => {
+            winnerModal.style.display = 'none';
+        });
+
+        roomCodeBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(displayRoomId.textContent);
+                copyHint.textContent = '복사됨!';
+            } catch {
+                copyHint.textContent = '직접 복사해 주세요';
+            }
+            setTimeout(() => { copyHint.textContent = '복사'; }, 1500);
+        });
+
+        // --- 화면 헬퍼 ---
+        function el(tag, className, text) {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text !== undefined) node.textContent = text;
+            return node;
+        }
+
+        function colorFor(name) {
+            let hash = 0;
+            for (const ch of name) hash = (hash * 31 + ch.codePointAt(0)) >>> 0;
+            return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+        }
+
+        // 게임 시작은 방장만, 게임 중이 아닐 때만 가능
+        function updateStartButton() {
+            const me = players.find(p => p.id === socket.id);
+            const amHost = !!(me && me.isHost);
+            btnStart.disabled = gameActive || !amHost;
+            btnStart.textContent = amHost ? '▶ 게임 시작' : '👑 방장 대기 중';
+            btnStart.title = amHost ? '' : '방장만 게임을 시작할 수 있어요';
+        }
+
+        function setMyTurn(value) {
+            isMyTurn = value;
+            if (!value) isDrawing = false;
+            canvasArea.classList.toggle('readonly', !value);
+        }
+
+        function setTimer(timeLeft) {
+            const urgent = timeLeft <= URGENT_TIME;
+            timerDisplay.textContent = `⏱ ${timeLeft}초`;
+            timerDisplay.classList.toggle('urgent', urgent);
+            timerFill.style.width = `${Math.max(0, (timeLeft / ROUND_TIME) * 100)}%`;
+            timerFill.classList.toggle('warn', !urgent && timeLeft <= ROUND_TIME / 2);
+            timerFill.classList.toggle('urgent', urgent);
+        }
+
+        function stopTimerEffects() {
+            timerDisplay.classList.remove('urgent');
+        }
+
+        // 축하 색종이 효과
+        function celebrate(target) {
+            if (reduceMotion) return;
+            const rect = target.getBoundingClientRect();
+            for (let i = 0; i < 26; i++) {
+                const piece = el('span', 'confetti');
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 90 + Math.random() * 150;
+                piece.style.left = `${rect.left + rect.width / 2}px`;
+                piece.style.top = `${rect.top + rect.height / 2}px`;
+                piece.style.background = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                piece.style.borderRadius = Math.random() > .5 ? '50%' : '3px';
+                piece.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+                piece.style.setProperty('--dy', `${Math.sin(angle) * dist - 40}px`);
+                piece.style.setProperty('--rot', `${Math.random() * 540 - 270}deg`);
+                piece.addEventListener('animationend', () => piece.remove());
+                document.body.appendChild(piece);
+            }
+        }
+
+        // 참가자 목록 그리기 (닉네임은 반드시 textContent로 넣어 HTML이 실행되지 않도록 함)
+        function renderPlayers() {
+            playerList.innerHTML = '';
+            playerCount.textContent = players.length;
+
+            players.forEach(p => {
+                const li = el('li', 'player-item');
+                li.classList.toggle('is-me', p.id === socket.id);
+                li.classList.toggle('is-drawer', p.id === currentDrawerId);
+                li.classList.toggle('waiting', p.isWaiting);
+                li.classList.toggle('is-host', p.isHost);
+
+                const avatar = el('span', 'avatar', [...p.nickname][0] || '?');
+                avatar.style.setProperty('--c', colorFor(p.nickname));
+
+                const name = el('span', 'pname', p.nickname);
+                if (p.id === socket.id) name.append(el('small', 'tag', '나'));
+                if (p.isHost) name.title = '방장';
+                if (p.isWaiting) name.append(el('small', 'tag tag-muted', '관전 중'));
+
+                const score = el('span', 'pscore', `${p.score}점`);
+                const prev = prevScores.get(p.id);
+                if (prev !== undefined && p.score > prev) score.classList.add('bump');
+                prevScores.set(p.id, p.score);
+
+                li.append(avatar, name, score);
+                playerList.appendChild(li);
+            });
+
+            updateStartButton();
+        }
+
+        // --- 소켓 이벤트 핸들러 ---
+        socket.on('room-created', enterRoom);
+        socket.on('room-joined', enterRoom);
+        socket.on('error-msg', (msg) => alert(msg));
+
+        socket.on('update-players', (list) => {
+            players = list;
+            renderPlayers();
+        });
+
+        socket.on('game-started', ({ drawerId, drawerNickname, currentRound, maxRounds }) => {
+            currentDrawerId = drawerId;
+            setMyTurn(socket.id === drawerId); // 내가 출제자일 때만 그릴 수 있음
+            gameActive = true;
+            updateStartButton();
+            roundInfo.textContent = `라운드 ${currentRound} / ${maxRounds}`;
+
+            if (socket.id !== drawerId) {
+                wordDisplay.className = 'word-box watching';
+                wordDisplay.textContent = `✏️ ${drawerNickname}님이 그리는 중`;
+                wordDisplay.style.display = 'block';
+            }
+            renderPlayers();
+        });
+
+        socket.on('your-turn', ({ word }) => {
+            setMyTurn(true);
+            wordDisplay.className = 'word-box';
+            wordDisplay.textContent = `제시어: ${word}`;
+            wordDisplay.style.display = 'block';
+        });
+
+        socket.on('timer-update', ({ timeLeft }) => setTimer(timeLeft));
+
+        socket.on('correct-answer', () => celebrate(canvas));
+
+        // 정답 / 시간 초과 / 출제자 퇴장으로 라운드가 끝났을 때
+        socket.on('round-end', () => {
+            currentDrawerId = null;
+            setMyTurn(false);
+            stopTimerEffects();
+            wordDisplay.style.display = 'none';
+            renderPlayers();
+        });
+
+        socket.on('game-over', ({ rankings }) => {
+            currentDrawerId = null;
+            setMyTurn(false);
+            stopTimerEffects();
+            gameActive = false;
+            updateStartButton();
+            wordDisplay.style.display = 'none';
+            roundInfo.textContent = '라운드: 종료됨';
+            timerDisplay.textContent = '⏱ 완료';
+
+            winnerList.innerHTML = '';
+            const medals = ['🥇', '🥈', '🥉'];
+
+            rankings.forEach((p, index) => {
+                const li = el('li', `winner-item ${index < 3 ? `rank-${index + 1}` : ''}`);
+                li.append(
+                    el('span', '', `${medals[index] || '👤'} ${index + 1}위 · ${p.nickname}`),
+                    el('span', 'score', `${p.score}점`)
+                );
+                winnerList.appendChild(li);
+            });
+
+            winnerModal.style.display = 'flex';
+            setTimeout(() => celebrate(winnerList), 300);
+        });
+
+        // 방에 들어갈 때 / 나올 때 화면 상태 초기화
+        function resetGameUI() {
+            currentDrawerId = null;
+            prevScores.clear();
+            setMyTurn(false);
+            gameActive = false;
+            updateStartButton();
+            roundInfo.textContent = '라운드: 대기 중';
+            setTimer(ROUND_TIME);
+            wordDisplay.style.display = 'none';
+            winnerModal.style.display = 'none';
+            resetCanvas();
+            renderPlayers();
+        }
+
+        function enterRoom({ roomId, game, strokes }) {
+            lobbyContainer.style.display = 'none';
+            gameContainer.style.display = 'block';
+            displayRoomId.textContent = roomId;
+            chatInput.disabled = false;
+            btnSend.disabled = false;
+            chatMessages.innerHTML = '';
+            resetGameUI();
+
+            // 게임 진행 중에 들어온 경우 현재 상황 반영
+            if (game && game.gameActive) {
+                gameActive = true;
+                updateStartButton();
+                roundInfo.textContent = `라운드 ${game.currentRound} / ${game.maxRounds}`;
+                setTimer(game.timeLeft);
+            }
+            (strokes || []).forEach(applyDraw);
+        }
+
+        // --- 캔버스 로직 ---
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        colorBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                colorBtns.forEach(b => b.classList.remove('active'));
+                colorPickerWrap.classList.remove('active');
+                btn.classList.add('active');
+                currentColor = btn.dataset.color;
+                colorPicker.value = currentColor;
+            });
+        });
+
+        colorPicker.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            colorBtns.forEach(b => b.classList.remove('active'));
+            colorPickerWrap.classList.add('active');
+        });
+
+        brushSizeInput.addEventListener('input', (e) => {
+            currentWidth = Number(e.target.value);
+            brushSizeVal.textContent = `${currentWidth}px`;
+        });
+
+        // 좌표 계산 함수 (모바일 비율 및 스케일 보정)
+        function getCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        // 두 점 사이 선분만 그림 (매번 전체 경로를 다시 그리지 않음)
+        function drawSegment(from, to, color, width) {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+        }
+
+        // 내 그림, 다른 유저 그림, 중간 입장 시 기록 재생 모두 이 함수로 그림
+        function applyDraw(data) {
+            if (data.type === 'start') {
+                lastPoint = { x: data.x, y: data.y };
+                drawSegment(lastPoint, lastPoint, data.color, data.width); // 클릭만 해도 점이 찍히도록
+            } else if (data.type === 'move' && lastPoint) {
+                const point = { x: data.x, y: data.y };
+                drawSegment(lastPoint, point, data.color, data.width);
+                lastPoint = point;
+            } else if (data.type === 'end') {
+                lastPoint = null;
+            }
+        }
+
+        function startDrawing(e) {
+            if (!isMyTurn) return; // 출제자가 아닐 경우 그림 그리기 완전히 차단
+            isDrawing = true;
+            const pos = getCanvasPos(e);
+            const data = { type: 'start', x: pos.x, y: pos.y, color: currentColor, width: currentWidth };
+            applyDraw(data);
+            socket.emit('draw', data);
+        }
+
+        function draw(e) {
+            if (!isDrawing || !isMyTurn || !lastPoint) return; // 출제자가 아니거나 드래그 중이 아니면 차단
+            const pos = getCanvasPos(e);
+            if (Math.hypot(pos.x - lastPoint.x, pos.y - lastPoint.y) < MIN_POINT_DISTANCE) return;
+
+            const data = { type: 'move', x: pos.x, y: pos.y, color: currentColor, width: currentWidth };
+            applyDraw(data);
+            socket.emit('draw', data);
+        }
+
+        function stopDrawing() {
+            if (isDrawing && isMyTurn) {
+                isDrawing = false;
+                applyDraw({ type: 'end' });
+                socket.emit('draw', { type: 'end' });
+            }
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', stopDrawing);
+
+        canvas.addEventListener('touchstart', (e) => { startDrawing(e); e.preventDefault(); });
+        canvas.addEventListener('touchmove', (e) => { draw(e); e.preventDefault(); });
+        window.addEventListener('touchend', stopDrawing);
+
+        btnClear.addEventListener('click', () => {
+            if (!isMyTurn) return; // 출제자가 아닐 때는 지우기 동작 안 함
+            resetCanvas();
+            socket.emit('clear');
+        });
+
+        // 다른 유저(출제자)가 그리는 그림 수신하여 화면에 표시
+        socket.on('draw', applyDraw);
+
+        socket.on('clear', () => resetCanvas());
+
+        function resetCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            lastPoint = null;
+        }
+
+        // --- 채팅 시스템 ---
+        function sendChatMessage() {
+            const msg = chatInput.value.trim();
+            if (!msg) return;
+            socket.emit('chat', { msg });
+            chatInput.value = '';
+        }
+
+        btnSend.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        socket.on('chat', (data) => {
+            let msgDiv;
+            // 시스템 메시지는 닉네임이 아니라 type으로 구분 (닉네임 '시스템'으로 위장 불가)
+            if (data.type === 'system') {
+                msgDiv = el('div', 'chat-msg system', data.msg);
+            } else {
+                msgDiv = el('div', 'chat-msg');
+                if (data.id === myNickname) msgDiv.classList.add('mine');
+                msgDiv.append(el('span', 'chat-name', data.id), el('span', 'chat-text', data.msg));
+            }
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+    </script>
+</body>
+</html>
