@@ -29,9 +29,11 @@ try {
     };
 }
 
-const ROUNDS_PER_PLAYER = 2;   // 한 게임에서 각 플레이어가 출제하는 횟수
+const ROUND_OPTIONS = [2, 4, 6, 8, 10, 16]; // 방 만들 때 고를 수 있는 총 라운드 수
+const DEFAULT_ROUNDS = 6;
 const MIN_PLAYERS = 2;
 const ROUND_TIME = 60;
+const HINT_TIME = 10;           // 남은 시간이 이만큼일 때 초성 힌트 공개
 const NEXT_ROUND_DELAY = 3000;
 const MAX_NICKNAME_LENGTH = 12;
 const MAX_CHAT_LENGTH = 100;
@@ -59,6 +61,17 @@ const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 // 정답 비교용: 공백 제거 + 소문자화
 const normalize = (s) => s.replace(/\s/g, '').toLowerCase();
 
+// '자전거' → 'ㅈㅈㄱ', 'PC방' → '○○ㅂ'
+// 영어·숫자는 그대로 두면 정답이 드러나므로 ○로 가리고, 띄어쓰기는 힌트로 남김
+const CHOSUNG = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+function getChosung(word) {
+    return [...word].map(ch => {
+        const code = ch.charCodeAt(0) - 0xAC00;
+        if (code >= 0 && code < 11172) return CHOSUNG[Math.floor(code / 588)];
+        return /\s/.test(ch) ? ch : '○';
+    }).join('');
+}
+
 function cleanNickname(nickname) {
     if (typeof nickname !== 'string') return '';
     return nickname.trim().slice(0, MAX_NICKNAME_LENGTH);
@@ -73,7 +86,9 @@ function getGameState(room) {
         gameActive: room.gameActive,
         currentRound: room.currentRound,
         maxRounds: room.maxRounds,
-        timeLeft: room.timeLeft
+        totalRounds: room.totalRounds,
+        timeLeft: room.timeLeft,
+        hint: room.hint
     };
 }
 
@@ -130,6 +145,7 @@ function endGame(roomId, reason) {
     room.roundActive = false;
     room.drawerId = null;
     room.currentWord = '';
+    room.hint = '';
     room.strokes = [];
     room.currentRound = 0;
     room.maxRounds = 0;
@@ -157,6 +173,7 @@ function finishRound(roomId, msg) {
     room.roundActive = false;
     room.drawerId = null;
     room.currentWord = '';
+    room.hint = '';
     room.strokes = [];
 
     const isLastRound = room.currentRound >= room.maxRounds;
@@ -218,6 +235,7 @@ function startRound(roomId) {
 
     room.drawerId = currentDrawer.id;
     room.currentWord = pickWord(room);
+    room.hint = '';
 
     io.to(roomId).emit('clear');
     io.to(roomId).emit('game-started', {
@@ -234,6 +252,12 @@ function startRound(roomId) {
     room.timer = setInterval(() => {
         room.timeLeft -= 1;
         io.to(roomId).emit('timer-update', { timeLeft: room.timeLeft });
+
+        if (room.timeLeft === HINT_TIME) {
+            room.hint = getChosung(room.currentWord);
+            io.to(roomId).emit('hint', { hint: room.hint });
+            systemChat(roomId, `💡 초성 힌트: ${room.hint}`);
+        }
 
         if (room.timeLeft <= 0) {
             finishRound(roomId, `⏰ 시간 초과! 정답은 [${room.currentWord}]였습니다.`);
@@ -321,6 +345,8 @@ io.on('connection', (socket) => {
         if (!nickname) return socket.emit('error-msg', '닉네임을 입력해 주세요.');
 
         const difficulty = Object.hasOwn(difficultyNames, data.difficulty) ? data.difficulty : 'normal';
+        const rounds = Number(data.rounds);
+        const totalRounds = ROUND_OPTIONS.includes(rounds) ? rounds : DEFAULT_ROUNDS;
         const roomId = generateRoomId();
         if (!roomId) return socket.emit('error-msg', '방이 가득 찼습니다. 잠시 후 다시 시도해 주세요.');
 
@@ -333,8 +359,10 @@ io.on('connection', (socket) => {
             roundActive: false,  // 현재 라운드에서 그림을 그리는 중인지 여부
             drawerId: null,
             currentWord: '',
+            hint: '',            // 공개된 초성 힌트 (없으면 빈 문자열)
             usedWords: [],
             difficulty,
+            totalRounds,         // 방장이 정한 한 게임의 라운드 수
             timer: null,
             nextRoundTimeout: null,
             timeLeft: ROUND_TIME,
@@ -399,7 +427,7 @@ io.on('connection', (socket) => {
         room.currentRound = 0;
         room.drawOrder = room.players.map(p => p.id);
         room.nextDrawerPos = 0;
-        room.maxRounds = room.drawOrder.length * ROUNDS_PER_PLAYER;
+        room.maxRounds = room.totalRounds;
 
         io.to(socket.roomId).emit('update-players', room.players);
         startRound(socket.roomId);

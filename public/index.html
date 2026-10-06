@@ -178,6 +178,8 @@
         .chip.normal  { --chip-c: var(--sun); }
         .chip.spicy   { --chip-c: #FF9F5A; }
         .chip.extreme { --chip-c: var(--coral); }
+        .chips.rounds { grid-template-columns: repeat(3, 1fr); }
+        .chip.round   { --chip-c: var(--sky); }
 
         .divider {
             display: flex;
@@ -382,6 +384,7 @@
             animation: pop-in .45s var(--pop) both;
         }
         .word-box.watching { background: var(--sky-soft); font-size: 15px; }
+        .word-box.hint { background: var(--sun); font-size: 18px; letter-spacing: 2px; }
         .timer-box {
             min-width: 84px;
             padding: 6px 12px;
@@ -674,6 +677,18 @@
             </div>
         </div>
 
+        <div class="field">
+            <span class="field-label" id="rounds-label">라운드 수</span>
+            <div class="chips rounds" role="radiogroup" aria-labelledby="rounds-label">
+                <label class="chip round"><input type="radio" name="rounds" value="2"><span>2</span></label>
+                <label class="chip round"><input type="radio" name="rounds" value="4"><span>4</span></label>
+                <label class="chip round"><input type="radio" name="rounds" value="6" checked><span>6</span></label>
+                <label class="chip round"><input type="radio" name="rounds" value="8"><span>8</span></label>
+                <label class="chip round"><input type="radio" name="rounds" value="10"><span>10</span></label>
+                <label class="chip round"><input type="radio" name="rounds" value="16"><span>16</span></label>
+            </div>
+        </div>
+
         <button id="btn-create" class="btn btn-primary btn-block">방 만들기</button>
 
         <div class="divider">또는 친구 방에 참가하기</div>
@@ -768,9 +783,12 @@
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js"></script>
     <script>
         // 게임 서버(node server.js) 주소.
-        // 비워두면 이 페이지를 연 주소로 접속 (Node 서버가 페이지까지 직접 제공하는 경우).
-        // 페이지는 학원 웹서버에 올리고 Node 서버는 따로 돌린다면 예: 'http://서버IP:3000'
-        const SERVER_URL = 'https://catchmind-web.onrender.com';
+        // 학원 웹서버(IIS)는 페이지 파일만 보여주고 Node를 못 돌리므로, 거기서 열었을 때만 Render 서버에 접속.
+        // 그 외(내 PC의 localhost:3000, Render 주소 등)에서는 이 페이지를 연 서버에 그대로 접속.
+        const STATIC_ONLY_HOSTS = ['222.239.52.31'];
+        const SERVER_URL = STATIC_ONLY_HOSTS.includes(location.hostname)
+            ? 'https://catchmind-web.onrender.com'
+            : '';
 
         // 'http://서버/catchmind/' 처럼 하위 폴더에 올려도 소켓 경로가 맞도록 현재 폴더 기준으로 계산
         const BASE_PATH = location.pathname.replace(/[^/]*$/, '');
@@ -834,6 +852,7 @@
         let players = [];
         let currentDrawerId = null;
         let gameActive = false;
+        let totalRounds = 0;          // 방장이 정한 라운드 수
         const prevScores = new Map(); // 점수 오를 때 통통 튀는 효과용
 
         setTimeout(() => document.querySelectorAll('.logo').forEach(l => l.classList.add('landed')), 1100);
@@ -842,8 +861,9 @@
         btnCreate.addEventListener('click', () => {
             myNickname = nicknameInput.value.trim();
             const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
+            const rounds = Number(document.querySelector('input[name="rounds"]:checked').value);
             if (!myNickname) return alert('닉네임을 입력해 주세요.');
-            socket.emit('create-room', { nickname: myNickname, difficulty });
+            socket.emit('create-room', { nickname: myNickname, difficulty, rounds });
         });
 
         btnJoin.addEventListener('click', () => {
@@ -1014,6 +1034,18 @@
 
         socket.on('timer-update', ({ timeLeft }) => setTimer(timeLeft));
 
+        // 남은 시간 10초: 맞히는 사람에게 초성 힌트 표시 (출제자는 제시어를 그대로 봄)
+        function showHint(hint) {
+            if (!hint || socket.id === currentDrawerId) return;
+            wordDisplay.className = 'word-box';
+            void wordDisplay.offsetWidth; // 등장 애니메이션 다시 재생
+            wordDisplay.className = 'word-box hint';
+            wordDisplay.textContent = `💡 ${hint}`;
+            wordDisplay.style.display = 'block';
+        }
+
+        socket.on('hint', ({ hint }) => showHint(hint));
+
         socket.on('correct-answer', () => celebrate(canvas));
 
         // 정답 / 시간 초과 / 출제자 퇴장으로 라운드가 끝났을 때
@@ -1058,7 +1090,7 @@
             setMyTurn(false);
             gameActive = false;
             updateStartButton();
-            roundInfo.textContent = '라운드: 대기 중';
+            roundInfo.textContent = waitingRoundText();
             setTimer(ROUND_TIME);
             wordDisplay.style.display = 'none';
             winnerModal.style.display = 'none';
@@ -1066,7 +1098,12 @@
             renderPlayers();
         }
 
+        function waitingRoundText() {
+            return totalRounds ? `대기 중 · 총 ${totalRounds}라운드` : '라운드: 대기 중';
+        }
+
         function enterRoom({ roomId, game, strokes }) {
+            totalRounds = game?.totalRounds || 0;
             lobbyContainer.style.display = 'none';
             gameContainer.style.display = 'block';
             displayRoomId.textContent = roomId;
@@ -1081,6 +1118,7 @@
                 updateStartButton();
                 roundInfo.textContent = `라운드 ${game.currentRound} / ${game.maxRounds}`;
                 setTimer(game.timeLeft);
+                showHint(game.hint);
             }
             (strokes || []).forEach(applyDraw);
         }
